@@ -7,7 +7,7 @@
 
 ## Descripción
 
-SmartPot-Broker es el **receptor MQTT** de SmartPot: la pieza por la que viajan la telemetría de las macetas y los comandos hacia sus actuadores. Es una imagen de **Eclipse Mosquitto 2.1** con el plugin de **seguridad dinámica**, sin acceso anónimo y con aislamiento por dispositivo: cada maceta solo puede publicar su propia telemetría y solo recibe sus propios comandos.
+SmartPot-Broker es el **receptor MQTT** de SmartPot: la pieza por la que viajan la telemetría de las macetas y los comandos hacia sus actuadores. Es una imagen de **Eclipse Mosquitto 2.1** con **TLS 1.2** sobre una CA propia, el plugin de **seguridad dinámica**, sin acceso anónimo y con aislamiento por dispositivo: cada maceta solo puede publicar su propia telemetría y solo recibe sus propios comandos.
 
 [SmartPot-API](https://github.com/SmartPotTech/SmartPot-API) es la única cuenta administradora: al crear un cultivo registra en el broker las credenciales de su dispositivo, y al borrarlo las elimina.
 
@@ -22,11 +22,13 @@ SmartPot-Broker/
 │       ├── packaging.yml       # Publica la imagen en GHCR (con SBOM y provenance)
 │       └── deploy.yml          # Despliega la app completa tras publicar
 ├── config/
-│   └── mosquitto.conf          # Listeners MQTT (1883) y WebSocket (9001), persistencia y logs
+│   └── mosquitto.conf          # Listeners interno (1883) y WebSocket (9001), sesiones y logs
+├── scripts/
+│   └── generate-certs.sh       # CA privada y certificado TLS del broker
 ├── tests/
-│   └── smoke.sh                # Autenticación, ACL por dispositivo y listeners
+│   └── smoke.sh                # Autenticación, ACL por dispositivo, TLS y listeners
 ├── compose.yaml                # Broker local endurecido
-├── docker-entrypoint.sh        # Inicializa la seguridad dinámica en el primer arranque
+├── docker-entrypoint.sh        # Inicializa la seguridad dinámica y agrega el listener TLS si hay certificados
 ├── Dockerfile
 └── .env.example
 ```
@@ -39,6 +41,26 @@ SmartPot-Broker/
 | Rol `device` | Una cuenta por cultivo: usuario = id del cultivo, clave = clave del dispositivo | Publicar en `smartpot/v1/{su id}/telemetry`, `/commands/ack` y `/status`; suscribirse a `smartpot/v1/{su id}/commands` |
 
 Las ACL del rol `device` usan el patrón `%u` (el usuario conectado), así que un dispositivo no puede escribir ni leer a nombre de otro cultivo aunque conozca su id. La API crea el rol al arrancar; el broker solo crea el administrador.
+
+## TLS y Conexión
+
+| Listener | Uso | Publicación en producción |
+| --- | --- | --- |
+| `8883` MQTT sobre TLS 1.2 | Macetas | Directo en `mqtt.smartpot.app:8883` |
+| `9001` WebSocket | Clientes web | `wss://mqtt.smartpot.app/mqtt` a través de Nginx |
+| `1883` MQTT | Solo la API, dentro de la red interna de Docker | Nunca se publica |
+
+El listener TLS se habilita solo si existen `ca.crt`, `server.crt` y `server.key` en `/etc/mosquitto/certs` (se monta de solo lectura). La maceta verifica el servidor con `ca.crt`, que es público y se distribuye con el firmware; `require_certificate` está en `false`, así que el dispositivo se autentica con usuario y clave, no con certificado de cliente.
+
+Reglas de conexión: un client id vacío se rechaza (`allow_zero_length_clientid false`), las sesiones persistentes expiran a la hora de desconectarse y cada listener limita sus conexiones simultáneas (`MQTT_TLS_MAX_CONNECTIONS`, 200 por defecto).
+
+Para generar la CA y el certificado del servidor:
+
+```bash
+sh scripts/generate-certs.sh certs mqtt.smartpot.app
+```
+
+`ca.key` firma los certificados y **no** debe quedar en el servidor. Si se pasa un tercer argumento con un archivo de entropía, OpenSSL lo mezcla con su generador al crear las llaves.
 
 ## Tópicos (contrato v1)
 
@@ -66,8 +88,9 @@ docker compose up -d
 
 | Puerto | Protocolo | Publicación |
 | --- | --- | --- |
-| 1883 | MQTT | Solo `127.0.0.1`; en producción Nginx lo expone como MQTT sobre TLS en `8883` |
-| 9001 | MQTT sobre WebSocket | Solo `127.0.0.1`; en producción Nginx lo expone como `wss://…/mqtt` |
+| 1883 | MQTT | Solo `127.0.0.1` |
+| 8883 | MQTT sobre TLS | Solo `127.0.0.1` en local; con los certificados de `./certs` |
+| 9001 | MQTT sobre WebSocket | Solo `127.0.0.1` |
 
 > [!IMPORTANT]
 > `MQTT_ADMIN_PASSWORD` solo se aplica cuando el volumen está vacío. Para cambiarla en un broker existente hay que usar `mosquitto_ctrl dynsec setClientPassword` o recrear el volumen (los dispositivos se vuelven a aprovisionar desde la API).
@@ -79,7 +102,7 @@ docker build -t smartpot-broker:ci .
 sh tests/smoke.sh smartpot-broker:ci
 ```
 
-Verifica que la telemetría propia llega a la API, que el broker descarta publicaciones y suscripciones a nombre de otro cultivo, y que rechaza claves incorrectas y conexiones anónimas.
+Genera una CA desechable y verifica que la telemetría propia llega a la API, que el broker descarta publicaciones y suscripciones a nombre de otro cultivo, que rechaza claves incorrectas, ids vacíos y conexiones anónimas, y que el listener TLS acepta solo credenciales válidas.
 
 ## Imagen publicada
 
