@@ -1,7 +1,9 @@
 #!/bin/sh
 # Genera la CA privada de SmartPot y el certificado TLS del broker.
 #   sh scripts/generate-certs.sh <carpeta> <host> [archivo de entropía]
-# La CA firma solo el certificado del servidor; ca.key debe guardarse fuera del servidor.
+# Con CLIENT_NAME definido también firma un certificado de cliente (client.key, client.csr, client.crt)
+# para macetas que quieran TLS mutuo; el broker no lo exige (require_certificate false).
+# ca.key debe guardarse fuera del servidor.
 set -eu
 
 OUT="${1:?Uso: generate-certs.sh <carpeta> <host> [entropía]}"
@@ -9,6 +11,7 @@ HOST="${2:?Indica el host público, por ejemplo mqtt.smartpot.app}"
 ENTROPY="${3:-}"
 CA_DAYS="${CA_DAYS:-3650}"
 SERVER_DAYS="${SERVER_DAYS:-825}"
+CLIENT_NAME="${CLIENT_NAME:-}"
 
 RAND=""
 if [ -n "$ENTROPY" ]; then
@@ -45,3 +48,20 @@ rm -f server.ext
 chmod 600 ca.key server.key
 openssl verify -CAfile ca.crt server.crt
 echo "Certificado del servidor para $HOST válido por $SERVER_DAYS días."
+
+if [ -n "$CLIENT_NAME" ]; then
+  # shellcheck disable=SC2086
+  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 $RAND -out client.key
+  openssl req -new -key client.key -subj "/O=SmartPot Tech/CN=$CLIENT_NAME" -out client.csr
+  cat > client.ext <<EOF
+basicConstraints=critical,CA:FALSE
+keyUsage=critical,digitalSignature,keyEncipherment
+extendedKeyUsage=clientAuth
+EOF
+  openssl x509 -req -in client.csr -CA ca.crt -CAkey ca.key -CAserial ca.srl \
+    -sha256 -days "$SERVER_DAYS" -extfile client.ext -out client.crt
+  rm -f client.ext
+  chmod 600 client.key
+  openssl verify -CAfile ca.crt client.crt
+  echo "Certificado de cliente para $CLIENT_NAME válido por $SERVER_DAYS días."
+fi
