@@ -12,11 +12,11 @@ USER 1883:1883
 
 VOLUME ["/mosquitto/data"]
 
-EXPOSE 1883 9001
+EXPOSE 1883 8883 9001
 
 HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
     CMD nc -z 127.0.0.1 1883 || exit 1
 
 ENTRYPOINT ["/usr/local/bin/smartpot-entrypoint.sh"]
 
-CMD ["mosquitto", "-c", "/mosquitto/config/mosquitto.conf"]
+CMD ["mosquitto"]
