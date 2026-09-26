@@ -6,3 +6,4 @@ tests
 compose.yaml
 .env
 .env.*
+scripts
