@@ -15,9 +15,11 @@ services:
       - .env
     ports:
       - "127.0.0.1:1883:1883"
+      - "127.0.0.1:8883:8883"
       - "127.0.0.1:9001:9001"
     volumes:
       - broker_data:/mosquitto/data
+      - ./certs:/etc/mosquitto/certs:ro
     tmpfs:
       - /tmp
 
