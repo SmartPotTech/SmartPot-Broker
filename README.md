@@ -60,7 +60,7 @@ Para generar la CA y el certificado del servidor:
 sh scripts/generate-certs.sh certs mqtt.smartpot.app
 ```
 
-`ca.key` firma los certificados y **no** debe quedar en el servidor. Si se pasa un tercer argumento con un archivo de entropía, OpenSSL lo mezcla con su generador al crear las llaves.
+Con `CLIENT_NAME=<nombre>` también se firma un certificado de cliente (`client.key`, `client.csr`, `client.crt`) para macetas que quieran TLS mutuo; hoy es opcional porque el broker no lo exige. `ca.key` firma los certificados y **no** debe quedar en el servidor. Si se pasa un tercer argumento con un archivo de entropía, OpenSSL lo mezcla con su generador al crear las llaves.
 
 ## Tópicos (contrato v1)
 
