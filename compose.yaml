@@ -1,0 +1,25 @@
+name: smartpot-broker
+
+services:
+  broker-smartpot:
+    build: .
+    image: ghcr.io/smartpottech/smartpot-broker:latest
+    container_name: smartpot-broker
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    env_file:
+      - .env
+    ports:
+      - "127.0.0.1:1883:1883"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - broker_data:/mosquitto/data
+    tmpfs:
+      - /tmp
+
+volumes:
+  broker_data:
