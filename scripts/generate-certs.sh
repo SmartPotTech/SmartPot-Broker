@@ -23,7 +23,7 @@ cd "$OUT"
 
 if [ ! -f ca.key ]; then
   # shellcheck disable=SC2086
-  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:4096 $RAND -out ca.key
+  openssl genrsa $RAND -out ca.key 4096
   openssl req -x509 -new -key ca.key -sha256 -days "$CA_DAYS" \
     -subj "/O=SmartPot Tech/CN=SmartPot MQTT CA" \
     -addext "basicConstraints=critical,CA:TRUE,pathlen:0" \
@@ -34,7 +34,7 @@ else
 fi
 
 # shellcheck disable=SC2086
-openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 $RAND -out server.key
+openssl genrsa $RAND -out server.key 2048
 openssl req -new -key server.key -subj "/O=SmartPot Tech/CN=$HOST" -out server.csr
 cat > server.ext <<EOF
 basicConstraints=critical,CA:FALSE
@@ -51,7 +51,7 @@ echo "Certificado del servidor para $HOST válido por $SERVER_DAYS días."
 
 if [ -n "$CLIENT_NAME" ]; then
   # shellcheck disable=SC2086
-  openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 $RAND -out client.key
+  openssl genrsa $RAND -out client.key 2048
   openssl req -new -key client.key -subj "/O=SmartPot Tech/CN=$CLIENT_NAME" -out client.csr
   cat > client.ext <<EOF
 basicConstraints=critical,CA:FALSE
