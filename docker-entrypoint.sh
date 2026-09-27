@@ -25,7 +25,7 @@ cp "$BASE_CONFIG" "$CONFIG"
 if [ -r "$CERTS_DIR/ca.crt" ] && [ -r "$CERTS_DIR/server.crt" ] && [ -r "$CERTS_DIR/server.key" ]; then
   cat >> "$CONFIG" <<EOF
 
-# Público: MQTT sobre TLS para las macetas.
+# Público: MQTT sobre TLS para los dispositivos de los cultivos.
 listener 8883 0.0.0.0
 protocol mqtt
 cafile $CERTS_DIR/ca.crt

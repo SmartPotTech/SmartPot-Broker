@@ -2,7 +2,7 @@
 # Genera la CA privada de SmartPot y el certificado TLS del broker.
 #   sh scripts/generate-certs.sh <carpeta> <host> [archivo de entropía]
 # Con CLIENT_NAME definido también firma un certificado de cliente (client.key, client.csr, client.crt)
-# para macetas que quieran TLS mutuo; el broker no lo exige (require_certificate false).
+# para dispositivos que quieran TLS mutuo; el broker no lo exige (require_certificate false).
 # ca.key debe guardarse fuera del servidor.
 set -eu
 
