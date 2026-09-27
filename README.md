@@ -7,7 +7,7 @@
 
 ## Descripción
 
-SmartPot-Broker es el **receptor MQTT** de SmartPot: la pieza por la que viajan la telemetría de las macetas y los comandos hacia sus actuadores. Es una imagen de **Eclipse Mosquitto 2.1** con **TLS 1.2** sobre una CA propia, el plugin de **seguridad dinámica**, sin acceso anónimo y con aislamiento por dispositivo: cada maceta solo puede publicar su propia telemetría y solo recibe sus propios comandos.
+SmartPot-Broker es el **receptor MQTT** de SmartPot: la pieza por la que viajan la telemetría de las macetas y los comandos hacia sus actuadores. Es una imagen de **Eclipse Mosquitto 2.1** con **TLS 1.2 o superior** sobre una CA propia, el plugin de **seguridad dinámica**, sin acceso anónimo y con aislamiento por dispositivo: cada maceta solo puede publicar su propia telemetría y solo recibe sus propios comandos.
 
 [SmartPot-API](https://github.com/SmartPotTech/SmartPot-API) es la única cuenta administradora: al crear un cultivo registra en el broker las credenciales de su dispositivo, y al borrarlo las elimina.
 
@@ -46,7 +46,7 @@ Las ACL del rol `device` usan el patrón `%u` (el usuario conectado), así que u
 
 | Listener | Uso | Publicación en producción |
 | --- | --- | --- |
-| `8883` MQTT sobre TLS 1.2 | Macetas | Directo en `mqtt.smartpot.app:8883` |
+| `8883` MQTT sobre TLS (1.2 o superior) | Macetas | Directo en `mqtt.smartpot.app:8883` |
 | `9001` WebSocket | Clientes web | `wss://mqtt.smartpot.app/mqtt` a través de Nginx |
 | `1883` MQTT | Solo la API, dentro de la red interna de Docker | Nunca se publica |
 
