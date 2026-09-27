@@ -19,8 +19,8 @@ SmartPot-Broker/
 │   ├── dependabot.yml          # Actualización de la imagen base y de las Actions
 │   └── workflows/
 │       ├── ci.yml              # Construye la imagen y corre la prueba de seguridad
-│       ├── packaging.yml       # Publica la imagen en GHCR (con SBOM y provenance)
-│       └── deploy.yml          # Despliega la app completa tras publicar
+│       ├── packaging.yml       # Publica la imagen en GHCR con SBOM y procedencia (y en Docker Hub con credenciales)
+│       └── deploy.yml          # Pide el despliegue al workflow central de SmartPotTech/.github
 ├── config/
 │   └── mosquitto.conf          # Listeners interno (1883) y WebSocket (9001), sesiones y logs
 ├── scripts/
@@ -111,6 +111,16 @@ docker pull ghcr.io/smartpottech/smartpot-broker:latest
 ```
 
 La imagen corre como el usuario `1883`, admite sistema de archivos de solo lectura (con `tmpfs` en `/tmp` y un volumen en `/mosquitto/data`) y trae un `HEALTHCHECK` sobre el puerto MQTT.
+
+Cada cambio en `main` pasa por el CI, publica la imagen en GHCR (y en Docker Hub como réplica cuando el repositorio tiene credenciales) y pide el despliegue al workflow central de [SmartPotTech/.github](https://github.com/SmartPotTech/.github), que actualiza producción de a uno y verifica `/health`.
+
+## Documentación
+
+El broker es el único punto de contacto de las macetas con la plataforma. La [documentación técnica](https://github.com/SmartPotTech/.github/blob/main/docs/SmartPot_Technical_Documentation.md) detalla el contrato MQTT, los permisos por maceta y la red de producción. Los superdiagramas muestran la plataforma completa en una sola imagen ampliable:
+
+- [Arquitectura completa](https://github.com/SmartPotTech/.github/blob/main/docs/images/superdiagrams/SmartPot_Super_01_Architecture.svg): los listeners, la seguridad dinámica y quién se conecta a cada uno
+- [Operación completa](https://github.com/SmartPotTech/.github/blob/main/docs/images/superdiagrams/SmartPot_Super_02_Operation_Sequence.svg): el aprovisionamiento al arrancar, la conexión de una maceta, los comandos y la última voluntad
+- [Máquinas de estado](https://github.com/SmartPotTech/.github/blob/main/docs/images/superdiagrams/SmartPot_Super_05_State_Machines.svg): los estados de la cuenta MQTT de una maceta
 
 ## Licencia
 
