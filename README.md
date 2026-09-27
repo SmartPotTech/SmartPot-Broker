@@ -116,11 +116,11 @@ Cada cambio en `main` pasa por el CI, publica la imagen en GHCR (y en Docker Hub
 
 ## Documentación
 
-El broker es el único punto de contacto de las macetas con la plataforma. La [documentación técnica](https://github.com/SmartPotTech/.github/blob/main/docs/SmartPot_Technical_Documentation.md) detalla el contrato MQTT, los permisos por maceta y la red de producción. Los superdiagramas muestran la plataforma completa en una sola imagen ampliable:
+El broker es el único punto de contacto de las macetas con la plataforma. La [documentación técnica](https://github.com/SmartPotTech/.github/blob/main/docs/SmartPot_Technical_Documentation.md) detalla el contrato MQTT, los permisos por maceta y la red de producción. Los diagramas generales muestran la plataforma completa en una sola imagen ampliable:
 
-- [Arquitectura completa](https://github.com/SmartPotTech/.github/blob/main/docs/images/superdiagrams/SmartPot_Super_01_Architecture.svg): los listeners, la seguridad dinámica y quién se conecta a cada uno
-- [Operación completa](https://github.com/SmartPotTech/.github/blob/main/docs/images/superdiagrams/SmartPot_Super_02_Operation_Sequence.svg): el aprovisionamiento al arrancar, la conexión de una maceta, los comandos y la última voluntad
-- [Máquinas de estado](https://github.com/SmartPotTech/.github/blob/main/docs/images/superdiagrams/SmartPot_Super_05_State_Machines.svg): los estados de la cuenta MQTT de una maceta
+- [Arquitectura completa](https://github.com/SmartPotTech/.github/blob/main/docs/diagrams/SmartPot_Global_01_Architecture.svg): los listeners, la seguridad dinámica y quién se conecta a cada uno
+- [Operación completa](https://github.com/SmartPotTech/.github/blob/main/docs/diagrams/SmartPot_Global_02_Operation_Sequence.svg): el aprovisionamiento al arrancar, la conexión de una maceta, los comandos y la última voluntad
+- [Máquinas de estado](https://github.com/SmartPotTech/.github/blob/main/docs/diagrams/SmartPot_Global_05_State_Machines.svg): los estados de la cuenta MQTT de una maceta
 
 ## Licencia
 
