@@ -7,9 +7,9 @@
 
 ## Descripción
 
-SmartPot-Broker es el **receptor MQTT** de SmartPot: la pieza por la que viajan la telemetría de las macetas y los comandos hacia sus actuadores. Es una imagen de **Eclipse Mosquitto 2.1** con **TLS 1.2 o superior** sobre una CA propia, el plugin de **seguridad dinámica**, sin acceso anónimo y con aislamiento por dispositivo: cada maceta solo puede publicar su propia telemetría y solo recibe sus propios comandos.
+SmartPot-Broker es el **receptor MQTT** de SmartPot: la pieza por la que viajan la telemetría de los cultivos y los comandos hacia sus actuadores. Es una imagen de **Eclipse Mosquitto 2.1** con **TLS 1.2 o superior** sobre una CA propia, el plugin de **seguridad dinámica**, sin acceso anónimo y con aislamiento por cultivo: cada dispositivo solo puede publicar su propia telemetría y solo recibe sus propios comandos.
 
-[SmartPot-API](https://github.com/SmartPotTech/SmartPot-API) es la única cuenta administradora: al crear un cultivo registra en el broker las credenciales de su dispositivo, y al borrarlo las elimina.
+[SmartPot-API](https://github.com/SmartPotTech/SmartPot-API) es la única cuenta administradora: al crear un cultivo registra en el broker las credenciales de su dispositivo, y al borrarlo las elimina. Un cultivo real las usa en su ESP32 (físico o en Wokwi); uno virtual, a través del simulador.
 
 ## Estructura del Proyecto
 
@@ -46,11 +46,11 @@ Las ACL del rol `device` usan el patrón `%u` (el usuario conectado), así que u
 
 | Listener | Uso | Publicación en producción |
 | --- | --- | --- |
-| `8883` MQTT sobre TLS (1.2 o superior) | Macetas | Directo en `mqtt.smartpot.app:8883` |
+| `8883` MQTT sobre TLS (1.2 o superior) | Dispositivos de los cultivos reales | Directo en `mqtt.smartpot.app:8883` |
 | `9001` WebSocket | Clientes web | `wss://mqtt.smartpot.app/mqtt` a través de Nginx |
-| `1883` MQTT | Solo la API, dentro de la red interna de Docker | Nunca se publica |
+| `1883` MQTT | La API y el simulador, dentro de la red interna de Docker | Nunca se publica |
 
-El listener TLS se habilita solo si existen `ca.crt`, `server.crt` y `server.key` en `/etc/mosquitto/certs` (se monta de solo lectura). La maceta verifica el servidor con `ca.crt`, que es público y se distribuye con el firmware; `require_certificate` está en `false`, así que el dispositivo se autentica con usuario y clave, no con certificado de cliente.
+El listener TLS se habilita solo si existen `ca.crt`, `server.crt` y `server.key` en `/etc/mosquitto/certs` (se monta de solo lectura). El dispositivo verifica el servidor con `ca.crt`, que es público y se distribuye con el firmware; `require_certificate` está en `false`, así que el dispositivo se autentica con usuario y clave, no con certificado de cliente.
 
 Reglas de conexión: un client id vacío se rechaza (`allow_zero_length_clientid false`), las sesiones persistentes expiran a la hora de desconectarse y cada listener limita sus conexiones simultáneas (`MQTT_TLS_MAX_CONNECTIONS`, 200 por defecto).
 
@@ -60,7 +60,7 @@ Para generar la CA y el certificado del servidor:
 sh scripts/generate-certs.sh certs mqtt.smartpot.app
 ```
 
-Con `CLIENT_NAME=<nombre>` también se firma un certificado de cliente (`client.key`, `client.csr`, `client.crt`) para macetas que quieran TLS mutuo; hoy es opcional porque el broker no lo exige. `ca.key` firma los certificados y **no** debe quedar en el servidor. Si se pasa un tercer argumento con un archivo de entropía, OpenSSL lo mezcla con su generador al crear las llaves.
+Con `CLIENT_NAME=<nombre>` también se firma un certificado de cliente (`client.key`, `client.csr`, `client.crt`) para dispositivos que quieran TLS mutuo; hoy es opcional porque el broker no lo exige. `ca.key` firma los certificados y **no** debe quedar en el servidor. Si se pasa un tercer argumento con un archivo de entropía, OpenSSL lo mezcla con su generador al crear las llaves.
 
 ## Tópicos (contrato v1)
 
@@ -116,11 +116,11 @@ Cada cambio en `main` pasa por el CI, publica la imagen en GHCR (y en Docker Hub
 
 ## Documentación
 
-El broker es el único punto de contacto de las macetas con la plataforma. La [documentación técnica](https://github.com/SmartPotTech/.github/blob/main/docs/SmartPot_Technical_Documentation.md) detalla el contrato MQTT, los permisos por maceta y la red de producción. Los diagramas generales muestran la plataforma completa en una sola imagen ampliable:
+El broker es el único punto de contacto de los dispositivos con la plataforma. Su documentación propia está en [`docs/`](docs/SmartPot_Broker_Documentation.md) (también en [DOCX](docs/SmartPot_Broker_Documentation.docx) y [PDF](docs/SmartPot_Broker_Documentation.pdf)), con sus diagramas en [`docs/diagrams`](docs/diagrams): el general del broker, los permisos por cultivo y los certificados. La [documentación técnica](https://github.com/SmartPotTech/.github/blob/main/docs/SmartPot_Technical_Documentation.md) detalla el contrato MQTT, los permisos por cultivo y la red de producción. Los diagramas generales muestran la plataforma completa en una sola imagen ampliable:
 
 - [Arquitectura completa](https://github.com/SmartPotTech/.github/blob/main/docs/diagrams/SmartPot_Global_01_Architecture.svg): los listeners, la seguridad dinámica y quién se conecta a cada uno
-- [Operación completa](https://github.com/SmartPotTech/.github/blob/main/docs/diagrams/SmartPot_Global_02_Operation_Sequence.svg): el aprovisionamiento al arrancar, la conexión de una maceta, los comandos y la última voluntad
-- [Máquinas de estado](https://github.com/SmartPotTech/.github/blob/main/docs/diagrams/SmartPot_Global_05_State_Machines.svg): los estados de la cuenta MQTT de una maceta
+- [Operación completa](https://github.com/SmartPotTech/.github/blob/main/docs/diagrams/SmartPot_Global_02_Operation_Sequence.svg): el aprovisionamiento al arrancar, la conexión de un dispositivo, los comandos y la última voluntad
+- [Máquinas de estado](https://github.com/SmartPotTech/.github/blob/main/docs/diagrams/SmartPot_Global_05_State_Machines.svg): los estados de la cuenta MQTT de un dispositivo
 
 ## Licencia
 
