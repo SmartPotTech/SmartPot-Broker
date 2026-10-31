@@ -20,6 +20,8 @@ env:
 
 jobs:
   snyk-container:
+    # En los PRs de Dependabot no llega el token de Snyk; esos cambios los revisa el CI.
+    if: github.actor != 'dependabot[bot]'
     name: Snyk Container (EMQX)
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -29,7 +31,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Set up Snyk CLI
-        uses: snyk/actions/setup@master
+        uses: snyk/actions/setup@11b673cfb4b0dc0d860a1323caa199d54950dcce # master al 2026-10-31
 
       - name: Build Docker Image
         run: docker build -t smartpot-broker-emqx:ci .
