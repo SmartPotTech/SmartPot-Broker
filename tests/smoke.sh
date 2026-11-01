@@ -102,17 +102,19 @@ done
 [ "$(docker inspect -f '{{.State.Health.Status}}' "$BROKER")" = "healthy" ] || { docker logs "$BROKER"; exit 1; }
 
 # Cliente MQTT de un solo uso en la misma red; pub/sub contra el broker por su nombre.
+# Se descarga antes para que el primer suscriptor no compita con la descarga.
+docker pull -q "$CLIENT_IMAGE" >/dev/null
 mqtt() { docker run --rm --network "$NET" -v "$WORK:/certs:ro" "$CLIENT_IMAGE" "$@"; }
 
 # La API (superusuario) escucha todo; un dispositivo publica lo suyo y lo ajeno (esto se corta).
-mqtt mosquitto_sub -i smoke-admin -h "$BROKER" -u "$ADMIN" -P "$ADMIN_PASS" -t 'smartpot/#' -v -W 6 > "$WORK/admin.log" 2>&1 &
-sleep 2
+mqtt mosquitto_sub -i smoke-admin -h "$BROKER" -u "$ADMIN" -P "$ADMIN_PASS" -t 'smartpot/#' -v -W 8 > "$WORK/admin.log" 2>&1 &
+sleep 3
 mqtt mosquitto_pub -i smoke-dev-1 -h "$BROKER" -u "$DEVICE" -P "$DEVICE_PASS" -t "smartpot/v1/$DEVICE/telemetry" -m own || true
 mqtt mosquitto_pub -i smoke-dev-2 -h "$BROKER" -u "$DEVICE" -P "$DEVICE_PASS" -t "smartpot/v1/$OTHER/telemetry" -m foreign 2>/dev/null || true
 
 # La API manda un comando al dispositivo, que está suscrito a su propio tópico de comandos.
-mqtt mosquitto_sub -i smoke-dev-3 -h "$BROKER" -u "$DEVICE" -P "$DEVICE_PASS" -t "smartpot/v1/$DEVICE/commands" -v -W 6 > "$WORK/device.log" 2>&1 &
-sleep 2
+mqtt mosquitto_sub -i smoke-dev-3 -h "$BROKER" -u "$DEVICE" -P "$DEVICE_PASS" -t "smartpot/v1/$DEVICE/commands" -v -W 8 > "$WORK/device.log" 2>&1 &
+sleep 3
 mqtt mosquitto_pub -i smoke-cmd -h "$BROKER" -u "$ADMIN" -P "$ADMIN_PASS" -t "smartpot/v1/$DEVICE/commands" -m command || true
 sleep 4
 
