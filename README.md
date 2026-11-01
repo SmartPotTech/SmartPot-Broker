@@ -94,15 +94,26 @@ sh scripts/generate-certs.sh certs mqtt.smartpot.app
 
 ## Guía de Instalación
 
+### Despliegue en un comando
+
+La imagen es pública: `ghcr.io/smartpottech/smartpot-broker-emqx`. La plataforma completa, con este servicio incluido, se
+levanta con un solo comando y sin descargar el código:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SmartPotTech/.github/main/docker/demo-beta/compose.yaml | docker compose -f - up -d --wait
+```
+
+Abre http://localhost:5173 e ingresa con `demo@smartpot.app` / `SmartPot2026`. Se detiene con
+`docker compose -p smartpot-demo-beta down` (con `-v` borra también los datos). Más detalle en la
+[demo beta](https://github.com/SmartPotTech/.github/tree/main/docker/demo-beta).
+
 ### Requisitos Previos
 
 - Docker (Docker Desktop o Docker Engine con Compose v2)
 
-### Ejecución con Docker Compose
+### Desde el código con Docker Compose
 
 ```bash
-git clone https://github.com/SmartPotTech/SmartPot-Broker-EMQX.git
-cd SmartPot-Broker-EMQX
 cp .env.example .env    # define MQTT_ADMIN_PASSWORD, MQTT_AUTHN_TOKEN y la clave de la API REST
 docker compose up -d
 ```
