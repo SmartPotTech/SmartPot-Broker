@@ -7,6 +7,11 @@ LABEL org.opencontainers.image.title="SmartPot Broker EMQX" \
       org.opencontainers.image.source="https://github.com/SmartPotTech/SmartPot-Broker-EMQX" \
       org.opencontainers.image.licenses="MIT"
 
+# La 5.8.9 no recibe imágenes nuevas: los parches de seguridad de Debian se aplican al construir.
+USER root
+RUN apt-get update     && apt-get upgrade -y --no-install-recommends     && rm -rf /var/lib/apt/lists/*
+USER emqx
+
 COPY --chown=emqx:emqx config/emqx.conf.template /opt/emqx/etc/emqx.conf.template
 COPY --chown=emqx:emqx --chmod=755 docker-entrypoint.sh /usr/local/bin/smartpot-entrypoint.sh
 
