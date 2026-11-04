@@ -13,15 +13,15 @@ CERTS_DIR="${MQTT_CERTS_DIR:-/opt/emqx/etc/certs}"
 
 # --- Configuración y valores por defecto ---
 ADMIN_USERNAME="${MQTT_ADMIN_USERNAME:-smartpot-api}"
-: "${MQTT_ADMIN_PASSWORD:?Falta MQTT_ADMIN_PASSWORD para la cuenta de servicio del broker}"
+: "${MQTT_ADMIN_PASSWORD:?Missing MQTT_ADMIN_PASSWORD for the broker service account}"
 if [ "${#MQTT_ADMIN_PASSWORD}" -lt 16 ]; then
-  echo "MQTT_ADMIN_PASSWORD debe tener al menos 16 caracteres." >&2
+  echo "MQTT_ADMIN_PASSWORD must be at least 16 characters long." >&2
   exit 1
 fi
-: "${MQTT_AUTHN_TOKEN:?Falta MQTT_AUTHN_TOKEN: el secreto compartido con la API para autenticar dispositivos}"
+: "${MQTT_AUTHN_TOKEN:?Missing MQTT_AUTHN_TOKEN: shared secret with the API to authenticate devices}"
 AUTHN_URL="${MQTT_AUTHN_URL:-http://api-smartpot:8091/internal/mqtt/authn}"
-: "${MQTT_BROKER_API_KEY:?Falta MQTT_BROKER_API_KEY para la API REST de EMQX}"
-: "${MQTT_BROKER_API_SECRET:?Falta MQTT_BROKER_API_SECRET para la API REST de EMQX}"
+: "${MQTT_BROKER_API_KEY:?Missing MQTT_BROKER_API_KEY for the EMQX REST API}"
+: "${MQTT_BROKER_API_SECRET:?Missing MQTT_BROKER_API_SECRET for the EMQX REST API}"
 SCHEDULERS="${MQTT_SCHEDULERS:-2}"
 LOG_LEVEL="${MQTT_LOG_LEVEL:-warning}"
 TLS_MAX_CONNECTIONS="${MQTT_TLS_MAX_CONNECTIONS:-200}"
@@ -55,10 +55,10 @@ if [ -r "$CERTS_DIR/ca.crt" ] && [ -r "$CERTS_DIR/server.crt" ] && [ -r "$CERTS_
     versions = [\"tlsv1.3\", \"tlsv1.2\"]
   }
 }"
-  echo "Listener TLS habilitado en 8883 con los certificados de $CERTS_DIR."
+  echo "TLS listener enabled on 8883 using certificates from $CERTS_DIR."
 else
   TLS_BLOCK="listeners.ssl.default { enable = false }"
-  echo "Sin certificados en $CERTS_DIR: el listener TLS (8883) queda deshabilitado."
+  echo "No certificates in $CERTS_DIR: TLS listener (8883) disabled."
 fi
 
 # --- Render de la configuración (sustitución literal, segura para cualquier valor) ---
@@ -71,7 +71,7 @@ content="${content//@DASHBOARD_PASSWORD@/$DASHBOARD_PASSWORD}"
 content="${content//@TLS_LISTENER@/$TLS_BLOCK}"
 printf '%s\n' "$content" > "$CONFIG"
 
-echo "Configuración de EMQX lista (hilos: $SCHEDULERS, autenticación de dispositivos vía $AUTHN_URL)."
+echo "EMQX configuration ready (schedulers: $SCHEDULERS, device authentication via $AUTHN_URL)."
 
 # Cede el control al arranque oficial de EMQX.
 exec /usr/bin/docker-entrypoint.sh "$@"

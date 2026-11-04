@@ -7,8 +7,8 @@
 # NO regeneres la CA, porque el firmware ya la lleva incrustada y dejaría de confiar en el broker.
 set -eu
 
-OUT="${1:?Uso: generate-certs.sh <carpeta> <host> [entropía]}"
-HOST="${2:?Indica el host público, por ejemplo mqtt.smartpot.app}"
+OUT="${1:?Usage: generate-certs.sh <dir> <host> [entropy]}"
+HOST="${2:?Specify the public host, e.g. mqtt.smartpot.app}"
 ENTROPY="${3:-}"
 CA_DAYS="${CA_DAYS:-3650}"
 SERVER_DAYS="${SERVER_DAYS:-825}"
@@ -29,9 +29,9 @@ if [ ! -f ca.key ]; then
     -subj "/O=SmartPot Tech/CN=SmartPot MQTT CA" \
     -addext "basicConstraints=critical,CA:TRUE,pathlen:0" \
     -addext "keyUsage=critical,keyCertSign,cRLSign" -out ca.crt
-  echo "CA creada: ca.crt (pública) y ca.key (privada)."
+  echo "CA created: ca.crt (public) and ca.key (private)."
 else
-  echo "Se reutiliza la CA existente."
+  echo "Reusing existing CA."
 fi
 
 # shellcheck disable=SC2086
@@ -48,7 +48,7 @@ openssl x509 -req -in server.csr -CA ca.crt -CAkey ca.key -CAserial ca.srl -CAcr
 rm -f server.ext
 chmod 600 ca.key server.key
 openssl verify -CAfile ca.crt server.crt
-echo "Certificado del servidor para $HOST válido por $SERVER_DAYS días."
+echo "Server certificate for $HOST valid for $SERVER_DAYS days."
 
 if [ -n "$CLIENT_NAME" ]; then
   # shellcheck disable=SC2086
@@ -64,5 +64,5 @@ EOF
   rm -f client.ext
   chmod 600 client.key
   openssl verify -CAfile ca.crt client.crt
-  echo "Certificado de cliente para $CLIENT_NAME válido por $SERVER_DAYS días."
+  echo "Client certificate for $CLIENT_NAME valid for $SERVER_DAYS days."
 fi

@@ -3,7 +3,7 @@
 FROM emqx/emqx:5.8.9
 
 LABEL org.opencontainers.image.title="SmartPot Broker EMQX" \
-      org.opencontainers.image.description="Broker MQTT de SmartPot sobre EMQX: la API autentica cada dispositivo y lo acota a su cultivo" \
+      org.opencontainers.image.description="SmartPot MQTT broker on EMQX: the API authenticates each device and scopes it to its crop" \
       org.opencontainers.image.source="https://github.com/SmartPotTech/SmartPot-Broker-EMQX" \
       org.opencontainers.image.licenses="MIT"
 

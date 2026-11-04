@@ -123,14 +123,14 @@ device_log="$(cat "$WORK/device.log" 2>/dev/null || true)"
 fail=0
 check() { if eval "$2"; then echo "OK   $1"; else echo "FAIL $1"; fail=1; fi; }
 
-check "la API recibe la telemetría propia del dispositivo" 'echo "$admin_log" | grep -q "telemetry own"'
-check "el broker descarta telemetría a nombre de otro cultivo" '! echo "$admin_log" | grep -q foreign'
-check "el dispositivo recibe sus comandos" 'echo "$device_log" | grep -q "commands command"'
-check "se rechaza una clave de dispositivo incorrecta" "! mqtt mosquitto_pub -i smoke-bad -h $BROKER -u $DEVICE -P wrong -t x -m y 2>/dev/null"
-check "se rechaza la conexión anónima" "! mqtt mosquitto_pub -i smoke-anon -h $BROKER -t x -m y 2>/dev/null"
-check "el dispositivo publica por TLS verificando la CA" "mqtt mosquitto_pub -i smoke-tls -h $BROKER -p 8883 --cafile /certs/ca.crt -u $DEVICE -P $DEVICE_PASS -t 'smartpot/v1/$DEVICE/telemetry' -m tls"
-check "TLS rechaza una clave incorrecta" "! mqtt mosquitto_pub -i smoke-tls-bad -h $BROKER -p 8883 --cafile /certs/ca.crt -u $DEVICE -P wrong -t x -m y 2>/dev/null"
-check "el dispositivo no puede suscribirse a comandos ajenos" "! mqtt mosquitto_sub -i smoke-sub-foreign -h $BROKER -u $DEVICE -P $DEVICE_PASS -t 'smartpot/v1/$OTHER/commands' -C 1 -W 3 2>/dev/null | grep -q ."
-check "el listener WebSocket (9001) responde" "docker exec $BROKER /opt/emqx/bin/emqx ctl listeners 2>/dev/null | grep -q 9001"
+check "API receives device's own telemetry" 'echo "$admin_log" | grep -q "telemetry own"'
+check "broker drops telemetry published on behalf of another crop" '! echo "$admin_log" | grep -q foreign'
+check "device receives its own commands" 'echo "$device_log" | grep -q "commands command"'
+check "invalid device key is rejected" "! mqtt mosquitto_pub -i smoke-bad -h $BROKER -u $DEVICE -P wrong -t x -m y 2>/dev/null"
+check "anonymous connection is rejected" "! mqtt mosquitto_pub -i smoke-anon -h $BROKER -t x -m y 2>/dev/null"
+check "device publishes over TLS verifying the CA" "mqtt mosquitto_pub -i smoke-tls -h $BROKER -p 8883 --cafile /certs/ca.crt -u $DEVICE -P $DEVICE_PASS -t 'smartpot/v1/$DEVICE/telemetry' -m tls"
+check "TLS rejects invalid device key" "! mqtt mosquitto_pub -i smoke-tls-bad -h $BROKER -p 8883 --cafile /certs/ca.crt -u $DEVICE -P wrong -t x -m y 2>/dev/null"
+check "device cannot subscribe to another crop's commands" "! mqtt mosquitto_sub -i smoke-sub-foreign -h $BROKER -u $DEVICE -P $DEVICE_PASS -t 'smartpot/v1/$OTHER/commands' -C 1 -W 3 2>/dev/null | grep -q ."
+check "WebSocket listener (9001) responds" "docker exec $BROKER /opt/emqx/bin/emqx ctl listeners 2>/dev/null | grep -q 9001"
 
 exit "$fail"
