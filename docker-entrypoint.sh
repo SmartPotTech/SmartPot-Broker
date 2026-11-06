@@ -30,6 +30,15 @@ DASHBOARD_PASSWORD="${MQTT_DASHBOARD_PASSWORD:-$(head -c 18 /dev/urandom | base6
 
 mkdir -p "$DATA_DIR"
 
+# --- Autorización de la cuenta de servicio (la API) ---
+# En un volumen nuevo el superusuario de la base interna no basta: authorization.no_match = deny hace que
+# EMQX le niegue la suscripción a smartpot/v1/+/telemetry. Esta fuente de archivo le permite publicar y
+# suscribirse solo al árbol de SmartPot (incluidas las suscripciones compartidas $share). Los dispositivos
+# siguen recibiendo su ACL acotada en la respuesta de /internal/mqtt/authn.
+ACL_FILE="/tmp/acl.conf"
+printf '{allow, {username, "%s"}, all, ["smartpot/v1/#", "$share/#"]}.\n' "$ADMIN_USERNAME" > "$ACL_FILE"
+chmod 644 "$ACL_FILE"
+
 # --- Siembra de la cuenta de servicio (solo en el primer arranque; EMQX conserva la existente) ---
 printf 'user_id,password,is_superuser\n%s,%s,true\n' "$ADMIN_USERNAME" "$MQTT_ADMIN_PASSWORD" > "$ADMIN_BOOTSTRAP"
 chmod 600 "$ADMIN_BOOTSTRAP"

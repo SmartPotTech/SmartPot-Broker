@@ -43,10 +43,14 @@ SmartPot-Broker/
 
 | Account                          | Used By                                                            | Permissions                                                                                                                  |
 |----------------------------------|--------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------|
-| Service (`MQTT_ADMIN_USERNAME`)  | SmartPot-API                                                       | Superuser: read/write on `smartpot/#`. Seeded into the internal EMQX database on first boot                                  |
+| Service (`MQTT_ADMIN_USERNAME`)  | SmartPot-API                                                       | Seeded as a superuser in the internal EMQX database; an explicit ACL file rule also allows `smartpot/v1/#` and `$share/#`   |
 | Device                           | One connection per crop: username = crop ID, password = device key | Publish to `smartpot/v1/{own id}/telemetry`, `/commands/ack`, and `/status`; subscribe to `smartpot/v1/{own id}/commands`    |
 
-Device authentication is resolved by the API over HTTP and returns a **per-crop ACL** (`acl` field in the authentication response, EMQX 5.8+): only `smartpot/v1/{id}/...` for the crop itself is allowed and everything else is denied. Thus, a device cannot read or write on behalf of another crop even if it knows its ID, without the broker storing any per-device state. Anything outside the ACL is rejected and disconnects the session (`no_match = deny`, `deny_action = disconnect`). The service account is a superuser and bypasses authorization.
+Device authentication is resolved by the API over HTTP and returns a **per-crop ACL** (`acl` field in the authentication response, EMQX 5.8+): only `smartpot/v1/{id}/...` for the crop itself is allowed and everything else is denied. Thus, a device cannot read or write on behalf of another crop even if it knows its ID, without the broker storing any per-device state. Anything outside the ACL is rejected and disconnects the session (`no_match = deny`, `deny_action = disconnect`).
+
+The entrypoint generates `/tmp/acl.conf` from `MQTT_ADMIN_USERNAME` and registers it as the first authorization source. This covers fresh volumes where `authorization.no_match = deny` would otherwise reject the API's subscription to `smartpot/v1/+/telemetry` or its `$share/...` subscription. The smoke test verifies both filters on a brand-new broker volume.
+
+The API also binds every device session to its crop: the MQTT client ID must be `smartpot-<cropId>` for a real device or `smartpot-sim-<cropId>` for the simulator. A different client ID is rejected during authentication, which prevents session takeover with a predictable ID.
 
 ### TLS and Connectivity
 
@@ -157,10 +161,14 @@ SmartPot-Broker/
 
 | Cuenta                                | Quién la usa                                                 | Permisos                                                                                                               |
 |---------------------------------------|--------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
-| Servicio (`MQTT_ADMIN_USERNAME`)      | SmartPot-API                                                 | Superusuario: lectura/escritura en `smartpot/#`. Se siembra en la base interna de EMQX al primer arranque              |
+| Servicio (`MQTT_ADMIN_USERNAME`)      | SmartPot-API                                                 | Se siembra como superusuario en la base interna de EMQX; además, una regla ACL de archivo le permite `smartpot/v1/#` y `$share/#` |
 | Dispositivo                           | Una conexión por cultivo: usuario = id del cultivo, clave = clave del dispositivo | Publicar en `smartpot/v1/{su id}/telemetry`, `/commands/ack` y `/status`; suscribirse a `smartpot/v1/{su id}/commands` |
 
-La autenticación de los dispositivos la resuelve la API por HTTP y devuelve un **ACL por cultivo** (campo `acl` de la respuesta de autenticación, EMQX 5.8+): se permite solo `smartpot/v1/{id}/...` del propio cultivo y se niega el resto. Así un dispositivo no puede escribir ni leer a nombre de otro cultivo aunque conozca su id, sin que el broker guarde ningún estado por dispositivo. Lo que no coincide con el ACL se rechaza y se corta la conexión (`no_match = deny`, `deny_action = disconnect`). La cuenta de servicio es superusuario y no pasa por autorización.
+La autenticación de los dispositivos la resuelve la API por HTTP y devuelve un **ACL por cultivo** (campo `acl` de la respuesta de autenticación, EMQX 5.8+): se permite solo `smartpot/v1/{id}/...` del propio cultivo y se niega el resto. Así un dispositivo no puede escribir ni leer a nombre de otro cultivo aunque conozca su id, sin que el broker guarde ningún estado por dispositivo. Lo que no coincide con el ACL se rechaza y se corta la conexión (`no_match = deny`, `deny_action = disconnect`).
+
+El entrypoint genera `/tmp/acl.conf` a partir de `MQTT_ADMIN_USERNAME` y lo registra como primera fuente de autorización. Eso cubre los volúmenes nuevos donde `authorization.no_match = deny` rechazaría la suscripción de la API a `smartpot/v1/+/telemetry` o su suscripción `$share/...`. La prueba de humo verifica ambos filtros en un broker recién levantado.
+
+La API también liga cada sesión de dispositivo a su cultivo: el client ID MQTT debe ser `smartpot-<cropId>` para un dispositivo real o `smartpot-sim-<cropId>` para el simulador. Un client ID distinto se rechaza en la autenticación, lo que impide el takeover de sesión con un id predecible.
 
 ### TLS y Conexión
 

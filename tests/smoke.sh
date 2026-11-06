@@ -106,10 +106,25 @@ done
 docker pull -q "$CLIENT_IMAGE" >/dev/null
 mqtt() { docker run --rm --network "$NET" -v "$WORK:/certs:ro" "$CLIENT_IMAGE" "$@"; }
 
-# La API (superusuario) escucha todo; un dispositivo publica lo suyo y lo ajeno (esto se corta).
-mqtt mosquitto_sub -i smoke-admin -h "$BROKER" -u "$ADMIN" -P "$ADMIN_PASS" -t 'smartpot/#' -v -W 8 > "$WORK/admin.log" 2>&1 &
+# La API (cuenta de servicio) escucha todo el árbol v1; un dispositivo publica lo suyo y lo ajeno (esto se corta).
+mqtt mosquitto_sub -i smoke-admin -h "$BROKER" -u "$ADMIN" -P "$ADMIN_PASS" -t 'smartpot/v1/#' -v -W 8 > "$WORK/admin.log" 2>&1 &
 sleep 3
 mqtt mosquitto_pub -i smoke-dev-1 -h "$BROKER" -u "$DEVICE" -P "$DEVICE_PASS" -t "smartpot/v1/$DEVICE/telemetry" -m own || true
+# Los suscriptores de un solo mensaje arrancan después del mensaje "own" para
+# que su primera lectura sea la que valida el ACL (P0-01) y $share.
+# Comprobación explícita del filtro con comodín que usa la API en un contenedor recién levantado.
+mqtt mosquitto_sub -i smoke-admin-wild -h "$BROKER" -u "$ADMIN" -P "$ADMIN_PASS" -t 'smartpot/v1/+/telemetry' -v -C 1 -W 15 > "$WORK/admin-wild.log" 2>&1 &
+# La suscripción compartida ($share) también debe estar permitida por el ACL de la cuenta de servicio.
+mqtt mosquitto_sub -i smoke-admin-share -h "$BROKER" -u "$ADMIN" -P "$ADMIN_PASS" \
+  -t '$share/smoke-group/smartpot/v1/+/telemetry' -v -C 1 -W 15 > "$WORK/admin-share.log" 2>&1 &
+sleep 3
+# Los suscriptores son contenedores que pueden tardar en conectar: se publica
+# varias veces para que el chequeo no dependa de una carrera de arranque.
+for _ in 1 2 3 4 5; do
+  mqtt mosquitto_pub -i smoke-dev-wild -h "$BROKER" -u "$DEVICE" -P "$DEVICE_PASS" -t "smartpot/v1/$DEVICE/telemetry" -m wildcard || true
+  mqtt mosquitto_pub -i smoke-dev-share -h "$BROKER" -u "$DEVICE" -P "$DEVICE_PASS" -t "smartpot/v1/$DEVICE/telemetry" -m shared || true
+  sleep 1
+done
 mqtt mosquitto_pub -i smoke-dev-2 -h "$BROKER" -u "$DEVICE" -P "$DEVICE_PASS" -t "smartpot/v1/$OTHER/telemetry" -m foreign 2>/dev/null || true
 
 # La API manda un comando al dispositivo, que está suscrito a su propio tópico de comandos.
@@ -118,12 +133,19 @@ sleep 3
 mqtt mosquitto_pub -i smoke-cmd -h "$BROKER" -u "$ADMIN" -P "$ADMIN_PASS" -t "smartpot/v1/$DEVICE/commands" -m command || true
 sleep 4
 
+# Espera a que los suscriptores de un solo mensaje terminen de escribir su log.
+wait || true
 admin_log="$(cat "$WORK/admin.log" 2>/dev/null || true)"
+admin_wild_log="$(cat "$WORK/admin-wild.log" 2>/dev/null || true)"
+admin_share_log="$(cat "$WORK/admin-share.log" 2>/dev/null || true)"
 device_log="$(cat "$WORK/device.log" 2>/dev/null || true)"
 fail=0
 check() { if eval "$2"; then echo "OK   $1"; else echo "FAIL $1"; fail=1; fi; }
 
 check "API receives device's own telemetry" 'echo "$admin_log" | grep -q "telemetry own"'
+check "API account can subscribe to smartpot/v1/+/telemetry on a fresh volume" 'echo "$admin_wild_log" | grep -q "telemetry wildcard"'
+check "API account can use a shared subscription (\$share)" 'echo "$admin_share_log" | grep -q "telemetry"'
+check "API account can publish to smartpot/v1/test/commands" "mqtt mosquitto_pub -i smoke-admin-pub -h $BROKER -u $ADMIN -P $ADMIN_PASS -q 1 -t smartpot/v1/test/commands -m probe"
 check "broker drops telemetry published on behalf of another crop" '! echo "$admin_log" | grep -q foreign'
 check "device receives its own commands" 'echo "$device_log" | grep -q "commands command"'
 check "invalid device key is rejected" "! mqtt mosquitto_pub -i smoke-bad -h $BROKER -u $DEVICE -P wrong -t x -m y 2>/dev/null"

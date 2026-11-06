@@ -5,8 +5,9 @@
 #   - Autenticación del servicio (la API) -> base interna de EMQX (un superusuario sembrado del bootstrap).
 #   - Autenticación de los dispositivos  -> HTTP a la API, que verifica la clave contra la base y devuelve
 #     el permiso y un ACL acotado al cultivo (campo `acl`, EMQX 5.8+).
-#   - Autorización -> sin fuentes por dispositivo: se confía en el ACL que adjunta la autenticación,
-#     con `no_match = deny`. El superusuario (la API) no pasa por autorización.
+#   - Autorización -> una fuente de archivo (/tmp/acl.conf, generada por el entrypoint) permite a la cuenta
+#     de servicio de la API publicar y suscribirse al árbol de SmartPot; los dispositivos usan el ACL que
+#     adjunta la autenticación. `no_match = deny` corta lo que no coincida.
 
 node {
   name = "emqx@127.0.0.1"
@@ -103,8 +104,8 @@ authentication = [
   }
 ]
 
-# Autorización: sin fuentes por dispositivo. Cada dispositivo trae su ACL desde la autenticación
-# (acotado a smartpot/v1/<cultivo>/...); lo que no coincide se rechaza y se corta la conexión.
+# Autorización: la fuente de archivo autoriza a la cuenta de servicio de la API; cada dispositivo trae su
+# ACL desde la autenticación (acotado a smartpot/v1/<cultivo>/...). Lo que no coincide se rechaza y se corta.
 authorization {
   no_match = deny
   deny_action = disconnect
@@ -113,7 +114,13 @@ authorization {
     max_size = 1024
     ttl = 5m
   }
-  sources = []
+  sources = [
+    {
+      type = file
+      enable = true
+      path = "/tmp/acl.conf"
+    }
+  ]
 }
 
 # Panel y API REST en 18083 (solo red interna; no se publica). La API usa una clave de API
