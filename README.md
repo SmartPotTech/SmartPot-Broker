@@ -1,7 +1,7 @@
-# SmartPot-Broker-EMQX (MQTT)
+# SmartPot-Broker (EMQX)
 
-[![Broker Image CI](https://github.com/SmartPotTech/SmartPot-Broker-EMQX/actions/workflows/ci.yml/badge.svg)](https://github.com/SmartPotTech/SmartPot-Broker-EMQX/actions/workflows/ci.yml)
-[![Publish Docker Images](https://github.com/SmartPotTech/SmartPot-Broker-EMQX/actions/workflows/packaging.yml/badge.svg)](https://github.com/SmartPotTech/SmartPot-Broker-EMQX/actions/workflows/packaging.yml)
+[![Broker Image CI](https://github.com/SmartPotTech/SmartPot-Broker/actions/workflows/ci.yml/badge.svg)](https://github.com/SmartPotTech/SmartPot-Broker/actions/workflows/ci.yml)
+[![Publish Docker Images](https://github.com/SmartPotTech/SmartPot-Broker/actions/workflows/packaging.yml/badge.svg)](https://github.com/SmartPotTech/SmartPot-Broker/actions/workflows/packaging.yml)
 
 [English](#english) | [Español](#español)
 
@@ -11,16 +11,16 @@
 
 ### Overview
 
-SmartPot-Broker-EMQX is the **MQTT broker** for SmartPot: the transport layer through which crop telemetry and actuator commands travel. It is built on **EMQX 5.8** (open source) with **TLS 1.2+** over a private CA, anonymous access disabled, and strict per-crop isolation: each device can only publish its own telemetry and only receives its own commands.
+SmartPot-Broker is the **MQTT broker** for SmartPot: the transport layer through which crop telemetry and actuator commands travel. It is built on **EMQX 5.8** (open source) with **TLS 1.2+** over a private CA, anonymous access disabled, and strict per-crop isolation: each device can only publish its own telemetry and only receives its own commands.
 
 It replaces the previous Eclipse Mosquitto broker while keeping the **device contract identical** (same topics, same username and password, same TLS with the CA embedded in the firmware). What changes is the internal operation: instead of provisioning accounts inside the broker via control topics, **the broker delegates authentication to the API**.
 
-[SmartPot-API](https://github.com/SmartPotTech/SmartPot-API-Go) is the center: EMQX only communicates with it. When a device connects, EMQX queries the API over HTTP; the API verifies the crop key against its database and responds with the permission and a crop-scoped ACL. A real crop uses the key on its ESP32 (physical or Wokwi); a virtual one uses it through the simulator. The API does not register or delete anything in the broker: the key lives in the database, so creating, rotating, or deleting a crop takes effect immediately without touching the broker (upon rotation or deletion, the API disconnects active sessions via the EMQX REST API).
+[SmartPot-API](https://github.com/SmartPotTech/SmartPot-API) is the center: EMQX only communicates with it. When a device connects, EMQX queries the API over HTTP; the API verifies the crop key against its database and responds with the permission and a crop-scoped ACL. A real crop uses the key on its ESP32 (physical or Wokwi); a virtual one uses it through the simulator. The API does not register or delete anything in the broker: the key lives in the database, so creating, rotating, or deleting a crop takes effect immediately without touching the broker (upon rotation or deletion, the API disconnects active sessions via the EMQX REST API).
 
 ### Project Structure
 
 ```text
-SmartPot-Broker-EMQX/
+SmartPot-Broker/
 ├── .github/
 │   ├── dependabot.yml          # Base image and GitHub Actions updates
 │   └── workflows/
@@ -81,7 +81,7 @@ sh scripts/generate-certs.sh certs mqtt.smartpot.app
 
 #### One-Command Deployment
 
-The image is public: `ghcr.io/smartpottech/smartpot-broker-emqx`. The full platform starts with a single command:
+The image is public: `ghcr.io/smartpottech/smartpot-broker`. The full platform starts with a single command:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/SmartPotTech/.github/main/docker/demo-beta/compose.yaml | docker compose -f - up -d --wait
@@ -99,8 +99,8 @@ docker compose up -d
 #### Smoke Test
 
 ```bash
-docker build -t smartpot-broker-emqx:ci .
-sh tests/smoke.sh smartpot-broker-emqx:ci
+docker build -t smartpot-broker:ci .
+sh tests/smoke.sh smartpot-broker:ci
 ```
 
 ### Documentation
@@ -109,7 +109,7 @@ Component documentation is in [`docs/`](docs/SmartPot_Broker_EMQX_Documentation.
 
 ### Industrial Roadmap: MQTT v5, X.509 mTLS, and gRPC ExHook Stream
 
-As part of the **Stack B Maximization Master Plan (demo-beta)**, `SmartPot-Broker-EMQX` evolves toward an ultra-low-power, hardware-secured cyber-physical architecture:
+As part of the **Stack B Maximization Master Plan (demo-beta)**, `SmartPot-Broker` evolves toward an ultra-low-power, hardware-secured cyber-physical architecture:
 
 1. **MQTT v5.0 Protocol & Topic Aliases**: `topic_alias_maximum = 64` reduces full telemetry topic strings to a 2-byte integer identifier after the initial packet.
 2. **X.509 mTLS Cryptographic Security**: Mutual TLS authentication based on Ed25519 / ECDSA P-256 client certificates with TLS Session Resumption (< 15 ms) and strict `peer_cert_cn == clientid` ACL rules.
@@ -125,16 +125,16 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 
 ### Descripción
 
-SmartPot-Broker-EMQX es el **receptor MQTT** de SmartPot: la pieza por la que viajan la telemetría de los cultivos y los comandos hacia sus actuadores. Es una imagen de **EMQX 5.8** (open source) con **TLS 1.2 o superior** sobre una CA propia, sin acceso anónimo y con aislamiento por cultivo: cada dispositivo solo puede publicar su propia telemetría y solo recibe sus propios comandos.
+SmartPot-Broker es el **receptor MQTT** de SmartPot: la pieza por la que viajan la telemetría de los cultivos y los comandos hacia sus actuadores. Es una imagen de **EMQX 5.8** (open source) con **TLS 1.2 o superior** sobre una CA propia, sin acceso anónimo y con aislamiento por cultivo: cada dispositivo solo puede publicar su propia telemetría y solo recibe sus propios comandos.
 
 Reemplaza al broker anterior de Eclipse Mosquitto manteniendo **idéntico el contrato de los dispositivos** (mismos tópicos, mismo usuario y clave, mismo TLS con la CA incrustada en el firmware). Lo que cambia es la operación interna: en vez de aprovisionar cuentas en el broker por tópicos de control, **el broker delega la autenticación en la API**.
 
-[SmartPot-API](https://github.com/SmartPotTech/SmartPot-API-Go) es el centro: EMQX solo habla con ella. Al conectarse un dispositivo, EMQX pregunta a la API por HTTP; la API verifica la clave del cultivo contra su base y responde con el permiso y un ACL acotado a ese cultivo. Un cultivo real usa la clave en su ESP32 (físico o en Wokwi); uno virtual, a través del simulador. La API no registra ni borra nada en el broker: la clave vive en la base, así que crear, rotar o borrar un cultivo tiene efecto inmediato sin tocar al broker (al rotar o borrar, la API corta las sesiones vivas por la API REST de EMQX).
+[SmartPot-API](https://github.com/SmartPotTech/SmartPot-API) es el centro: EMQX solo habla con ella. Al conectarse un dispositivo, EMQX pregunta a la API por HTTP; la API verifica la clave del cultivo contra su base y responde con el permiso y un ACL acotado a ese cultivo. Un cultivo real usa la clave en su ESP32 (físico o en Wokwi); uno virtual, a través del simulador. La API no registra ni borra nada en el broker: la clave vive en la base, así que crear, rotar o borrar un cultivo tiene efecto inmediato sin tocar al broker (al rotar o borrar, la API corta las sesiones vivas por la API REST de EMQX).
 
 ### Estructura del Proyecto
 
 ```text
-SmartPot-Broker-EMQX/
+SmartPot-Broker/
 ├── .github/
 │   ├── dependabot.yml          # Actualización de la imagen base y de las Actions
 │   └── workflows/
@@ -209,8 +209,8 @@ docker compose up -d
 #### Prueba de humo
 
 ```bash
-docker build -t smartpot-broker-emqx:ci .
-sh tests/smoke.sh smartpot-broker-emqx:ci
+docker build -t smartpot-broker:ci .
+sh tests/smoke.sh smartpot-broker:ci
 ```
 
 ### Documentación
@@ -219,7 +219,7 @@ Su documentación propia está en [`docs/`](docs/SmartPot_Broker_EMQX_Documentat
 
 ### Hoja de Ruta Industrial: MQTT v5, mTLS X.509 y Stream gRPC ExHook
 
-Como parte del **Plan Maestro de Maximización del Stack B (demo-beta)**, `SmartPot-Broker-EMQX` evoluciona hacia una arquitectura ciberfísica de ultra-bajo consumo y seguridad de hardware:
+Como parte del **Plan Maestro de Maximización del Stack B (demo-beta)**, `SmartPot-Broker` evoluciona hacia una arquitectura ciberfísica de ultra-bajo consumo y seguridad de hardware:
 
 1. **Protocolo MQTT v5.0 y Topic Aliases**: `topic_alias_maximum = 64` obligatorio, reduciendo los tópicos extensos de telemetría a un identificador entero de 2 bytes tras el paquete inicial.
 2. **Seguridad Criptográfica mTLS X.509**: Autenticación mutua en el handshake TLS basada en certificados cliente Ed25519 / ECDSA P-256 con TLS Session Resumption (Session Tickets < 15 ms) y regla ACL criptográfica `peer_cert_cn == clientid`.
