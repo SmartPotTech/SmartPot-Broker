@@ -48,7 +48,7 @@ SmartPot-Broker/
 
 Device authentication is resolved by the API over HTTP and returns a **per-crop ACL** (`acl` field in the authentication response, EMQX 5.8+): only `smartpot/v1/{id}/...` for the crop itself is allowed and everything else is denied. Thus, a device cannot read or write on behalf of another crop even if it knows its ID, without the broker storing any per-device state. Anything outside the ACL is rejected and disconnects the session (`no_match = deny`, `deny_action = disconnect`).
 
-The entrypoint generates `/tmp/acl.conf` from `MQTT_ADMIN_USERNAME` and registers it as the first authorization source. This covers fresh volumes where `authorization.no_match = deny` would otherwise reject the API's subscription to `smartpot/v1/+/telemetry` or its `$share/...` subscription. The smoke test verifies both filters on a brand-new broker volume.
+The entrypoint generates `/tmp/acl.conf` from `MQTT_ADMIN_USERNAME` and registers it as the first authorization source. This covers fresh volumes where `authorization.no_match = deny` would otherwise reject the API's subscription to `smartpot/v1/+/telemetry` or its `$share/...` subscription. The smoke test verifies both filters on a brand-new broker volume and that retained status survives a broker restart, because retained messages are stored on disk in the data volume.
 
 The API also binds every device session to its crop: the MQTT client ID must be `smartpot-<cropId>` for a real device or `smartpot-sim-<cropId>` for the simulator. A different client ID is rejected during authentication, which prevents session takeover with a predictable ID.
 
@@ -166,7 +166,7 @@ SmartPot-Broker/
 
 La autenticación de los dispositivos la resuelve la API por HTTP y devuelve un **ACL por cultivo** (campo `acl` de la respuesta de autenticación, EMQX 5.8+): se permite solo `smartpot/v1/{id}/...` del propio cultivo y se niega el resto. Así un dispositivo no puede escribir ni leer a nombre de otro cultivo aunque conozca su id, sin que el broker guarde ningún estado por dispositivo. Lo que no coincide con el ACL se rechaza y se corta la conexión (`no_match = deny`, `deny_action = disconnect`).
 
-El entrypoint genera `/tmp/acl.conf` a partir de `MQTT_ADMIN_USERNAME` y lo registra como primera fuente de autorización. Eso cubre los volúmenes nuevos donde `authorization.no_match = deny` rechazaría la suscripción de la API a `smartpot/v1/+/telemetry` o su suscripción `$share/...`. La prueba de humo verifica ambos filtros en un broker recién levantado.
+El entrypoint genera `/tmp/acl.conf` a partir de `MQTT_ADMIN_USERNAME` y lo registra como primera fuente de autorización. Eso cubre los volúmenes nuevos donde `authorization.no_match = deny` rechazaría la suscripción de la API a `smartpot/v1/+/telemetry` o su suscripción `$share/...`. La prueba de humo verifica ambos filtros en un broker recién levantado y que el estado retenido sobrevive a un reinicio del broker, porque los mensajes retenidos se guardan en disco en el volumen de datos.
 
 La API también liga cada sesión de dispositivo a su cultivo: el client ID MQTT debe ser `smartpot-<cropId>` para un dispositivo real o `smartpot-sim-<cropId>` para el simulador. Un client ID distinto se rechaza en la autenticación, lo que impide el takeover de sesión con un id predecible.
 

@@ -42,6 +42,13 @@ mqtt {
 retainer {
   enable = true
   max_payload_size = 64KB
+  # El estado retenido (`.../status` y `.../capabilities`) debe sobrevivir a un
+  # reinicio del proceso: se guarda en el volumen de datos, no solo en RAM.
+  backend {
+    type = built_in_database
+    storage_type = disc
+    max_retained_messages = 0
+  }
 }
 
 # Listener interno: solo lo usa la API (y el simulador) dentro de la red de Docker.
