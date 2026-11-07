@@ -111,6 +111,8 @@ sh tests/smoke.sh smartpot-broker:ci
 
 Component documentation is in [`docs/`](docs/SmartPot_Broker_EMQX_Documentation.md). The [Technical Documentation](https://github.com/SmartPotTech/.github/blob/main/docs/SmartPot_Technical_Documentation.md) details the MQTT contract, per-crop permissions, and production network.
 
+The [interactive diagrams](docs/diagrams/interactive/README.md#english) show how a device connects and is scoped to its crop, in English and Spanish, with links to the exact source lines.
+
 ### Industrial Roadmap: MQTT v5, X.509 mTLS, and gRPC ExHook Stream
 
 As part of the **Stack B Maximization Master Plan (demo-beta)**, `SmartPot-Broker` evolves toward an ultra-low-power, hardware-secured cyber-physical architecture:
@@ -224,6 +226,8 @@ sh tests/smoke.sh smartpot-broker:ci
 ### Documentación
 
 Su documentación propia está en [`docs/`](docs/SmartPot_Broker_EMQX_Documentation.md). La [documentación técnica](https://github.com/SmartPotTech/.github/blob/main/docs/SmartPot_Technical_Documentation.md) detalla el contrato MQTT, los permisos por cultivo y la red de producción.
+
+Los [diagramas interactivos](docs/diagrams/interactive/README.md#español) muestran cómo se conecta un dispositivo y cómo queda acotado a su cultivo, en español e inglés, con enlaces a las líneas exactas del código.
 
 ### Hoja de Ruta Industrial: MQTT v5, mTLS X.509 y Stream gRPC ExHook
 
