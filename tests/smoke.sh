@@ -110,6 +110,8 @@ mqtt() { docker run --rm --network "$NET" -v "$WORK:/certs:ro" "$CLIENT_IMAGE" "
 mqtt mosquitto_sub -i smoke-admin -h "$BROKER" -u "$ADMIN" -P "$ADMIN_PASS" -t 'smartpot/v1/#' -v -W 8 > "$WORK/admin.log" 2>&1 &
 sleep 3
 mqtt mosquitto_pub -i smoke-dev-1 -h "$BROKER" -u "$DEVICE" -P "$DEVICE_PASS" -t "smartpot/v1/$DEVICE/telemetry" -m own || true
+# El dispositivo solo puede suscribirse a sus comandos, no publicarlos en su propio tópico.
+mqtt mosquitto_pub -i smoke-dev-forbidden -h "$BROKER" -u "$DEVICE" -P "$DEVICE_PASS" -t "smartpot/v1/$DEVICE/commands" -m forbidden || true
 # Los suscriptores de un solo mensaje arrancan después del mensaje "own" para
 # que su primera lectura sea la que valida el ACL (P0-01) y $share.
 # Comprobación explícita del filtro con comodín que usa la API en un contenedor recién levantado.
@@ -142,17 +144,38 @@ device_log="$(cat "$WORK/device.log" 2>/dev/null || true)"
 fail=0
 check() { if eval "$2"; then echo "OK   $1"; else echo "FAIL $1"; fail=1; fi; }
 
+check "container becomes healthy" '[ "$(docker inspect -f "{{.State.Health.Status}}" "$BROKER")" = "healthy" ]'
 check "API receives device's own telemetry" 'echo "$admin_log" | grep -q "telemetry own"'
 check "API account can subscribe to smartpot/v1/+/telemetry on a fresh volume" 'echo "$admin_wild_log" | grep -q "telemetry wildcard"'
 check "API account can use a shared subscription (\$share)" 'echo "$admin_share_log" | grep -q "telemetry"'
 check "API account can publish to smartpot/v1/test/commands" "mqtt mosquitto_pub -i smoke-admin-pub -h $BROKER -u $ADMIN -P $ADMIN_PASS -q 1 -t smartpot/v1/test/commands -m probe"
 check "broker drops telemetry published on behalf of another crop" '! echo "$admin_log" | grep -q foreign'
+check "device cannot publish to its own commands topic" '! echo "$admin_log" | grep -q forbidden'
 check "device receives its own commands" 'echo "$device_log" | grep -q "commands command"'
 check "invalid device key is rejected" "! mqtt mosquitto_pub -i smoke-bad -h $BROKER -u $DEVICE -P wrong -t x -m y 2>/dev/null"
 check "anonymous connection is rejected" "! mqtt mosquitto_pub -i smoke-anon -h $BROKER -t x -m y 2>/dev/null"
+check "API account rejects a wrong password" "! mqtt mosquitto_pub -i smoke-admin-bad -h $BROKER -u $ADMIN -P wrong -t x -m y 2>/dev/null"
 check "device publishes over TLS verifying the CA" "mqtt mosquitto_pub -i smoke-tls -h $BROKER -p 8883 --cafile /certs/ca.crt -u $DEVICE -P $DEVICE_PASS -t 'smartpot/v1/$DEVICE/telemetry' -m tls"
+check "TLS listener rejects plaintext MQTT" "! mqtt mosquitto_pub -i smoke-tls-plain -h $BROKER -p 8883 -u $DEVICE -P $DEVICE_PASS -t x -m y 2>/dev/null"
 check "TLS rejects invalid device key" "! mqtt mosquitto_pub -i smoke-tls-bad -h $BROKER -p 8883 --cafile /certs/ca.crt -u $DEVICE -P wrong -t x -m y 2>/dev/null"
 check "device cannot subscribe to another crop's commands" "! mqtt mosquitto_sub -i smoke-sub-foreign -h $BROKER -u $DEVICE -P $DEVICE_PASS -t 'smartpot/v1/$OTHER/commands' -C 1 -W 3 2>/dev/null | grep -q ."
 check "WebSocket listener (9001) responds" "docker exec $BROKER /opt/emqx/bin/emqx ctl listeners 2>/dev/null | grep -q 9001"
+
+# Un mensaje retenido debe sobrevivir al reinicio: el volumen de datos de EMQX
+# es la única recuperación disponible si el proceso se cae.
+mqtt mosquitto_pub -i smoke-retain -h "$BROKER" -u "$ADMIN" -P "$ADMIN_PASS" \
+  -t "smartpot/v1/$DEVICE/status" -m retained-probe -r || true
+mqtt mosquitto_sub -i smoke-retained-before -h "$BROKER" -u "$ADMIN" -P "$ADMIN_PASS" \
+  -t "smartpot/v1/$DEVICE/status" -C 1 -W 10 > "$WORK/retained-before.log" 2>&1 || true
+check "retained status is delivered before a restart" 'grep -q retained-probe "$WORK/retained-before.log"'
+docker restart "$BROKER" >/dev/null
+for _ in $(seq 1 90); do
+  [ "$(docker inspect -f '{{.State.Health.Status}}' "$BROKER")" = "healthy" ] && break
+  sleep 1
+done
+check "broker becomes healthy after a restart" '[ "$(docker inspect -f "{{.State.Health.Status}}" "$BROKER")" = "healthy" ]'
+mqtt mosquitto_sub -i smoke-retained -h "$BROKER" -u "$ADMIN" -P "$ADMIN_PASS" \
+  -t "smartpot/v1/$DEVICE/status" -C 1 -W 20 > "$WORK/retained.log" 2>&1 || true
+check "retained status survives a broker restart" 'grep -q retained-probe "$WORK/retained.log"'
 
 exit "$fail"
