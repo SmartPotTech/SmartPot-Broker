@@ -1,0 +1,5 @@
+# Snyk (https://snyk.io) policy file
+version: v1.25.0
+# Mitigated: Debian base OS packages (cyrus-sasl2, attr, acl) in EMQX 5.8 image are upgraded
+# during container build step via apt-get update && apt-get upgrade.
+ignore: {}
