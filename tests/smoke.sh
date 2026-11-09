@@ -107,9 +107,12 @@ docker pull -q "$CLIENT_IMAGE" >/dev/null
 mqtt() { docker run --rm --network "$NET" -v "$WORK:/certs:ro" "$CLIENT_IMAGE" "$@"; }
 
 # La API (cuenta de servicio) escucha todo el árbol v1; un dispositivo publica lo suyo y lo ajeno (esto se corta).
-mqtt mosquitto_sub -i smoke-admin -h "$BROKER" -u "$ADMIN" -P "$ADMIN_PASS" -t 'smartpot/v1/#' -v -W 8 > "$WORK/admin.log" 2>&1 &
+mqtt mosquitto_sub -i smoke-admin -h "$BROKER" -u "$ADMIN" -P "$ADMIN_PASS" -t 'smartpot/v1/#' -v -W 15 > "$WORK/admin.log" 2>&1 &
 sleep 3
-mqtt mosquitto_pub -i smoke-dev-1 -h "$BROKER" -u "$DEVICE" -P "$DEVICE_PASS" -t "smartpot/v1/$DEVICE/telemetry" -m own || true
+for _ in 1 2 3; do
+  mqtt mosquitto_pub -i smoke-dev-1 -h "$BROKER" -u "$DEVICE" -P "$DEVICE_PASS" -t "smartpot/v1/$DEVICE/telemetry" -m own || true
+  sleep 1
+done
 # El dispositivo solo puede suscribirse a sus comandos, no publicarlos en su propio tópico.
 mqtt mosquitto_pub -i smoke-dev-forbidden -h "$BROKER" -u "$DEVICE" -P "$DEVICE_PASS" -t "smartpot/v1/$DEVICE/commands" -m forbidden || true
 # Los suscriptores de un solo mensaje arrancan después del mensaje "own" para
