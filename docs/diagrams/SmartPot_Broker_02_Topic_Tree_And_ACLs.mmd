@@ -1,0 +1,28 @@
+%%{init: {"theme": "base", "fontFamily": "Segoe UI, Arial, sans-serif", "themeVariables": {"fontFamily": "Segoe UI, Arial, sans-serif", "fontSize": "15px", "primaryColor": "#DDF5EA", "primaryTextColor": "#17261F", "primaryBorderColor": "#067A52", "secondaryColor": "#E3F2FB", "secondaryTextColor": "#17261F", "secondaryBorderColor": "#1F6FA0", "tertiaryColor": "#F2F7F4", "tertiaryTextColor": "#17261F", "tertiaryBorderColor": "#D5E3DC", "lineColor": "#5B6B63", "textColor": "#17261F", "mainBkg": "#DDF5EA", "nodeBorder": "#067A52", "clusterBkg": "#F7FAF8", "clusterBorder": "#D5E3DC", "edgeLabelBackground": "#FFFFFF", "actorBkg": "#067A52", "actorBorder": "#0B3D2B", "actorTextColor": "#FFFFFF", "actorLineColor": "#5B6B63", "signalColor": "#17261F", "signalTextColor": "#17261F", "labelBoxBkgColor": "#0B3D2B", "labelBoxBorderColor": "#0B3D2B", "labelTextColor": "#FFFFFF", "loopTextColor": "#0B3D2B", "noteBkgColor": "#FDF4DD", "noteBorderColor": "#C98D12", "noteTextColor": "#17261F", "activationBkgColor": "#DDF5EA", "activationBorderColor": "#067A52", "attributeBackgroundColorOdd": "#FFFFFF", "attributeBackgroundColorEven": "#F2F7F4"}}}%%
+flowchart TB
+  subgraph root["Root Topic Space: smartpot/v1/{cropId}/..."]
+    direction TB
+    telem[".../telemetry<br/>Device -> Broker (Publish)<br/>JSON v1 or Compact 27B v2"]
+    cmds[".../commands<br/>API -> Device (Subscribe, QoS 1)<br/>{id, actuator, action, durationSeconds}"]
+    ack[".../commands/ack<br/>Device -> API (Publish, QoS 1)<br/>{id, status: EXECUTED|FAILED, message}"]
+    status[".../status<br/>Device LWT (Retained)<br/>online / offline"]
+    caps[".../capabilities<br/>Device -> API (Retained)<br/>Declared sensors and actuators"]
+  end
+
+  subgraph permissions["ACL Authorization Policy"]
+    direction TB
+    p_dev["Device Client (ClientId: smartpot-{cropId})<br/>PUBLISH: telemetry, commands/ack, status, capabilities<br/>SUBSCRIBE: commands<br/>DENY: all other crop IDs and wildcard '#'"]
+    p_api["API Backend (Shared Client)<br/>SUBSCRIBE: $share/api/smartpot/v1/+/telemetry<br/>SUBSCRIBE: $share/api/smartpot/v1/+/commands/ack<br/>SUBSCRIBE: $share/api/smartpot/v1/+/status<br/>PUBLISH: smartpot/v1/{cropId}/commands"]
+  end
+
+  telem & ack & status & caps --- p_dev
+  cmds --- p_dev
+  telem & ack & status --- p_api
+  cmds --- p_api
+
+  classDef leaf fill:#DDF5EA,stroke:#067A52,color:#17261F
+  classDef water fill:#E3F2FB,stroke:#1F6FA0,color:#17261F
+  classDef deep fill:#0B3D2B,stroke:#06281C,color:#FFFFFF
+
+  class telem,cmds,ack,status,caps water
+  class p_dev,p_api leaf

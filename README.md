@@ -17,6 +17,49 @@ It replaces the previous Eclipse Mosquitto broker while keeping the **device con
 
 [SmartPot-API](https://github.com/SmartPotTech/SmartPot-API) is the center: EMQX only communicates with it. When a device connects, EMQX queries the API over HTTP; the API verifies the crop key against its database and responds with the permission and a crop-scoped ACL. A real crop uses the key on its ESP32 (physical or Wokwi); a virtual one uses it through the simulator. The API does not register or delete anything in the broker: the key lives in the database, so creating, rotating, or deleting a crop takes effect immediately without touching the broker (upon rotation or deletion, the API disconnects active sessions via the EMQX REST API).
 
+### Architecture & Topic Tree Diagrams
+
+```mermaid
+flowchart LR
+  subgraph clients["Connected MQTT Clients"]
+    esp["Physical ESP32 / Wokwi<br/>Rust Embassy / MicroPython"]
+    sim["SmartPot-DataGenerator<br/>Virtual Crop Simulator"]
+    web["SmartPot-Web (SolidJS PWA)<br/>WebSockets Transport"]
+  end
+
+  subgraph broker["SmartPot-Broker (EMQX 5.8.9) · Non-root UID 1000"]
+    direction TB
+    tls["TLS 8883 Listener<br/>CA Signed Server Certificate<br/>TLS 1.3 · ECDHE/RSA"]
+    ws["WebSocket Listener :9001<br/>Path: /mqtt · WSS proxied via Nginx"]
+    authn["HTTP Authn Hook<br/>POST /internal/mqtt/authn<br/>Header: x-smartpot-broker-token"]
+    acl["Dynamic ACL Engine<br/>Strict per-crop tenant scoping<br/>Deny all '#' wildcard access"]
+    evict["REST Client Eviction<br/>POST /api/v5/clients/{id}/kick<br/>Triggered on key rotation/deletion"]
+  end
+
+  subgraph backend["Backend & Application Engine"]
+    api["SmartPot-API (Go 1.27.3)<br/>Shared Subscription $share/api/...<br/>Validates Device AES-GCM Credentials"]
+  end
+
+  esp -->|"TLS 8883 (MQTTS)"| tls
+  sim -->|"Plain/TLS MQTT"| tls
+  web -->|"WSS /mqtt"| ws
+
+  tls & ws --> authn
+  authn <-->|"Delegated Authn"| api
+  authn --> acl
+  api -->|"Session Termination"| evict
+  acl -->|"Verified Bridge"| api
+
+  classDef core fill:#067A52,stroke:#0B3D2B,color:#FFFFFF
+  classDef leaf fill:#DDF5EA,stroke:#067A52,color:#17261F
+  classDef water fill:#E3F2FB,stroke:#1F6FA0,color:#17261F
+  classDef deep fill:#0B3D2B,stroke:#06281C,color:#FFFFFF
+
+  class esp,sim,web water
+  class tls,ws,authn,acl,evict leaf
+  class api core
+```
+
 ### Project Structure
 
 ```text
@@ -136,6 +179,49 @@ SmartPot-Broker es el **receptor MQTT** de SmartPot: la pieza por la que viajan 
 Reemplaza al broker anterior de Eclipse Mosquitto manteniendo **idéntico el contrato de los dispositivos** (mismos tópicos, mismo usuario y clave, mismo TLS con la CA incrustada en el firmware). Lo que cambia es la operación interna: en vez de aprovisionar cuentas en el broker por tópicos de control, **el broker delega la autenticación en la API**.
 
 [SmartPot-API](https://github.com/SmartPotTech/SmartPot-API) es el centro: EMQX solo habla con ella. Al conectarse un dispositivo, EMQX pregunta a la API por HTTP; la API verifica la clave del cultivo contra su base y responde con el permiso y un ACL acotado a ese cultivo. Un cultivo real usa la clave en su ESP32 (físico o en Wokwi); uno virtual, a través del simulador. La API no registra ni borra nada en el broker: la clave vive en la base, así que crear, rotar o borrar un cultivo tiene efecto inmediato sin tocar al broker (al rotar o borrar, la API corta las sesiones vivas por la API REST de EMQX).
+
+### Diagrama de arquitectura y flujo de tópicos
+
+```mermaid
+flowchart LR
+  subgraph clients["Connected MQTT Clients"]
+    esp["Physical ESP32 / Wokwi<br/>Rust Embassy / MicroPython"]
+    sim["SmartPot-DataGenerator<br/>Virtual Crop Simulator"]
+    web["SmartPot-Web (SolidJS PWA)<br/>WebSockets Transport"]
+  end
+
+  subgraph broker["SmartPot-Broker (EMQX 5.8.9) · Non-root UID 1000"]
+    direction TB
+    tls["TLS 8883 Listener<br/>CA Signed Server Certificate<br/>TLS 1.3 · ECDHE/RSA"]
+    ws["WebSocket Listener :9001<br/>Path: /mqtt · WSS proxied via Nginx"]
+    authn["HTTP Authn Hook<br/>POST /internal/mqtt/authn<br/>Header: x-smartpot-broker-token"]
+    acl["Dynamic ACL Engine<br/>Strict per-crop tenant scoping<br/>Deny all '#' wildcard access"]
+    evict["REST Client Eviction<br/>POST /api/v5/clients/{id}/kick<br/>Triggered on key rotation/deletion"]
+  end
+
+  subgraph backend["Backend & Application Engine"]
+    api["SmartPot-API (Go 1.27.3)<br/>Shared Subscription $share/api/...<br/>Validates Device AES-GCM Credentials"]
+  end
+
+  esp -->|"TLS 8883 (MQTTS)"| tls
+  sim -->|"Plain/TLS MQTT"| tls
+  web -->|"WSS /mqtt"| ws
+
+  tls & ws --> authn
+  authn <-->|"Delegated Authn"| api
+  authn --> acl
+  api -->|"Session Termination"| evict
+  acl -->|"Verified Bridge"| api
+
+  classDef core fill:#067A52,stroke:#0B3D2B,color:#FFFFFF
+  classDef leaf fill:#DDF5EA,stroke:#067A52,color:#17261F
+  classDef water fill:#E3F2FB,stroke:#1F6FA0,color:#17261F
+  classDef deep fill:#0B3D2B,stroke:#06281C,color:#FFFFFF
+
+  class esp,sim,web water
+  class tls,ws,authn,acl,evict leaf
+  class api core
+```
 
 ### Estructura del Proyecto
 
