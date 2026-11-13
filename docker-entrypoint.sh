@@ -25,6 +25,7 @@ AUTHN_URL="${MQTT_AUTHN_URL:-http://api-smartpot:8091/internal/mqtt/authn}"
 SCHEDULERS="${MQTT_SCHEDULERS:-2}"
 LOG_LEVEL="${MQTT_LOG_LEVEL:-warning}"
 TLS_MAX_CONNECTIONS="${MQTT_TLS_MAX_CONNECTIONS:-2000}"
+TLS_MAX_CONN_RATE="${MQTT_TLS_MAX_CONN_RATE:-100}"
 NODE_COOKIE="${MQTT_NODE_COOKIE:-smartpot-emqx}"
 DASHBOARD_PASSWORD="${MQTT_DASHBOARD_PASSWORD:-$(head -c 18 /dev/urandom | base64 | tr -d '/+=')}"
 
@@ -55,6 +56,7 @@ if [ -r "$CERTS_DIR/ca.crt" ] && [ -r "$CERTS_DIR/server.crt" ] && [ -r "$CERTS_
   TLS_BLOCK="listeners.ssl.default {
   bind = \"0.0.0.0:8883\"
   max_connections = ${TLS_MAX_CONNECTIONS}
+  max_conn_rate = ${TLS_MAX_CONN_RATE}
   ssl_options {
     cacertfile = \"${CERTS_DIR}/ca.crt\"
     certfile = \"${CERTS_DIR}/server.crt\"
