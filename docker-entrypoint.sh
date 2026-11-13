@@ -26,10 +26,19 @@ SCHEDULERS="${MQTT_SCHEDULERS:-2}"
 LOG_LEVEL="${MQTT_LOG_LEVEL:-warning}"
 TLS_MAX_CONNECTIONS="${MQTT_TLS_MAX_CONNECTIONS:-2000}"
 TLS_MAX_CONN_RATE="${MQTT_TLS_MAX_CONN_RATE:-100}"
-NODE_COOKIE="${MQTT_NODE_COOKIE:-smartpot-emqx}"
-DASHBOARD_PASSWORD="${MQTT_DASHBOARD_PASSWORD:-$(head -c 18 /dev/urandom | base64 | tr -d '/+=')}"
-
+COOKIE_FILE="$DATA_DIR/.node-cookie"
 mkdir -p "$DATA_DIR"
+if [ -n "${MQTT_NODE_COOKIE:-}" ]; then
+  NODE_COOKIE="$MQTT_NODE_COOKIE"
+else
+  # Sin cookie fija en código: se genera una aleatoria por volumen para conservar estabilidad entre reinicios.
+  if [ ! -s "$COOKIE_FILE" ]; then
+    head -c 18 /dev/urandom | base64 | tr -d '/+=' > "$COOKIE_FILE"
+    chmod 600 "$COOKIE_FILE"
+  fi
+  NODE_COOKIE="$(cat "$COOKIE_FILE")"
+fi
+DASHBOARD_PASSWORD="${MQTT_DASHBOARD_PASSWORD:-$(head -c 18 /dev/urandom | base64 | tr -d '/+=')}"
 
 # --- Autorización de la cuenta de servicio (la API) ---
 # En un volumen nuevo el superusuario de la base interna no basta: authorization.no_match = deny hace que
